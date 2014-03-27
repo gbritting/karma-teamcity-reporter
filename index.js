@@ -1,4 +1,5 @@
 var util = require('util');
+var fs = require('fs');
 
 var escapeMessage = function (message) {
   if(message === null || message === undefined) {
@@ -29,6 +30,8 @@ var formatMessage = function() {
 
 var TeamcityReporter = function(baseReporterDecorator) {
   baseReporterDecorator(this);
+  
+  this.adapters = [fs.writeSync.bind(fs.writeSync, 1)];
 
   this.TEST_IGNORED  = '##teamcity[testIgnored name=\'%s\']';
   this.SUITE_START   = '##teamcity[testSuiteStarted name=\'%s\']';
@@ -39,24 +42,20 @@ var TeamcityReporter = function(baseReporterDecorator) {
   this.BLOCK_OPENED  = '##teamcity[blockOpened name=\'%s\']';
   this.BLOCK_CLOSED  = '##teamcity[blockClosed name=\'%s\']';
 
-  var reporter = this;
-  var initializeBrowser = function(browser) {
-    reporter.browserResults[browser.id] = {
+  this.onRunStart = function() {
+    this._browsers = [];
+    this.browserResults = {};
+  };
+  this.onBrowserStart = function (browser) {
+    this._browsers.push(browser);
+
+    this.browserResults[browser.id] = {
       name: browser.name,
       log : [],
       lastSuite : null
     };
   };
 
-  this.onRunStart = function(browsers) {
-    this.browserResults = {};
-    // Support Karma 0.10 (TODO: remove)
-    browsers.forEach(initializeBrowser);
-  };
-
-  this.onBrowserStart = function(browser){
-    initializeBrowser(browser);
-  };
 
   this.specSuccess = function(browser, result) {
     var log = this.getLog(browser, result);
